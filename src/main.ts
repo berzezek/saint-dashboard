@@ -1,6 +1,7 @@
 import './assets/css/main.css'
 
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
 
@@ -13,6 +14,8 @@ app.use(createRouter({
     { path: '/', component: () => import('./pages/index.vue') },
     { path: '/inbox', component: () => import('./pages/inbox.vue') },
     { path: '/customers', component: () => import('./pages/customers.vue') },
+    { path: '/leads', component: () => import('./pages/leads/index.vue') },
+    { path: '/leads/:id', component: () => import('./pages/leads/[id].vue') },
     {
       path: '/settings',
       component: () => import('./pages/settings.vue'),
@@ -28,5 +31,6 @@ app.use(createRouter({
 }))
 
 app.use(ui)
+app.use(createPinia())
 
 app.mount('#app')

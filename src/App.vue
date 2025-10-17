@@ -31,7 +31,15 @@ const links = [[{
   onSelect: () => {
     open.value = false
   }
-}, {
+},
+{
+  label: 'Leads',
+  icon: 'i-lucide-headset',
+  to: '/leads',
+  onSelect: () => {
+    open.value = false
+  }
+},  {
   label: 'Settings',
   to: '/settings',
   icon: 'i-lucide-settings',

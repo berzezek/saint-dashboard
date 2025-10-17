@@ -1,60 +1,61 @@
 <script setup lang="ts">
-import { useTemplateRef, h, ref, resolveComponent, Ref } from 'vue'
+import { useTemplateRef, h, ref, watch, resolveComponent, computed } from 'vue'
 import { upperFirst } from 'scule'
 import type { TableColumn } from '@nuxt/ui'
 import { getPaginationRowModel, type Row } from '@tanstack/table-core'
-import type { Customer } from '../types'
-import CustomersSlideover from '../components/customers/CustomersSlideover.vue'
+import { useLeadsStore } from '../../stores/leads'
+import type { Lead } from '../../types'
 
 const UButton = resolveComponent('UButton')
+const UBadge = resolveComponent('UBadge')
 const UDropdownMenu = resolveComponent('UDropdownMenu')
 const UCheckbox = resolveComponent('UCheckbox')
 
 const toast = useToast()
 const table = useTemplateRef('table')
 
-const openDetail = ref(false)
+const leadsStore = useLeadsStore()
 
 const columnFilters = ref([{
-  id: 'phone',
+  id: 'code',
   value: ''
 }])
 const columnVisibility = ref()
 const rowSelection = ref({})
 
 const isFetching = false
+const leads: Lead[] = leadsStore.rows
 
-const data: Customer[] = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john_doe@foo.bar",
-    phone: "123-456-789",
-    messenger: "john_doe"
-  },
-    {
-    id: 2,
-    name: "Jane Doe",
-    email: "jane_doe@foo.bar",
-    phone: "987-654-321",
-    messenger: "jane_doe"
-  },
-]
 
-function getRowItems(row: Row<Customer>) {
+const data = computed(() => {
+  return leads.map(lead => {
+    const totalPrice = lead.parts.reduce((sum, part) => {
+      return sum + part.price * part.value
+    }, 0)
+
+    return {
+      ...lead,
+      totalPrice
+    }
+  })
+})
+
+
+
+function getRowItems(row: Row<Lead>) {
   return [
     {
       type: 'label',
       label: 'Actions'
     },
     {
-      label: 'Copy customer Phone',
+      label: 'Copy customer ID',
       icon: 'i-lucide-copy',
       onSelect() {
-        navigator.clipboard.writeText(row.original.phone.toString())
+        navigator.clipboard.writeText(row.original.id.toString())
         toast.add({
           title: 'Copied to clipboard',
-          description: 'Customer phone copied to clipboard'
+          description: 'Customer ID copied to clipboard'
         })
       }
     },
@@ -62,39 +63,32 @@ function getRowItems(row: Row<Customer>) {
       type: 'separator'
     },
     {
-      label: 'View customer details',
+      label: 'View lead details',
       icon: 'i-lucide-list',
-      onSelect() {
-        selectedCustomer(row.original.id.toString())
-      }
+      to: `/leads/${row.original.id}`
     },
     {
-      label: 'View customer payments',
+      label: 'View lead payments',
       icon: 'i-lucide-wallet'
     },
     {
       type: 'separator'
     },
     {
-      label: 'Delete customer',
+      label: 'Delete lead',
       icon: 'i-lucide-trash',
       color: 'error',
       onSelect() {
         toast.add({
-          title: 'Customer deleted',
-          description: 'The customer has been deleted.'
+          title: 'Lead deleted',
+          description: 'The lead has been deleted.'
         })
       }
     }
   ]
 }
 
-function selectedCustomer(id: string) {
-  openDetail.value = true;
-  console.log(id)
-} 
-
-const columns: TableColumn<Customer>[] = [
+const columns: TableColumn<Lead>[] = [
   {
     id: 'select',
     header: ({ table }) =>
@@ -118,26 +112,33 @@ const columns: TableColumn<Customer>[] = [
     header: 'ID'
   },
   {
-    accessorKey: 'name',
-    header: 'Name',
-    cell: ({ row }) => {
-      return h('div', { class: 'flex items-center gap-3' }, [
-        h('div', undefined, [
-          h('p', { class: 'font-medium text-highlighted' }, row.original.name),
-          h('p', { class: '' }, `@${row.original.name}`)
-        ])
-      ])
+    accessorKey: 'code',
+    header: ({ column }) => {
+      const isSorted = column.getIsSorted()
+
+      return h(UButton, {
+        color: 'neutral',
+        variant: 'ghost',
+        label: 'Code',
+        icon: isSorted
+          ? isSorted === 'asc'
+            ? 'i-lucide-arrow-up-narrow-wide'
+            : 'i-lucide-arrow-down-wide-narrow'
+          : 'i-lucide-arrow-up-down',
+        class: '-mx-2.5',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
+      })
     }
   },
   {
-    accessorKey: 'email',
+    accessorKey: 'customer.name',
     header: ({ column }) => {
       const isSorted = column.getIsSorted()
 
       return h(UButton, {
         color: 'neutral',
         variant: 'ghost',
-        label: 'Email',
+        label: 'Customer',
         icon: isSorted
           ? isSorted === 'asc'
             ? 'i-lucide-arrow-up-narrow-wide'
@@ -148,15 +149,15 @@ const columns: TableColumn<Customer>[] = [
       })
     }
   },
-    {
-    accessorKey: 'phone',
+  {
+    accessorKey: 'product.name',
     header: ({ column }) => {
       const isSorted = column.getIsSorted()
 
       return h(UButton, {
         color: 'neutral',
         variant: 'ghost',
-        label: 'Phone',
+        label: 'Product',
         icon: isSorted
           ? isSorted === 'asc'
             ? 'i-lucide-arrow-up-narrow-wide'
@@ -165,6 +166,46 @@ const columns: TableColumn<Customer>[] = [
         class: '-mx-2.5',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
       })
+    }
+  },
+  {
+    accessorKey: 'totalPrice',
+    header: ({ column }) => {
+      const isSorted = column.getIsSorted()
+
+      return h(UButton, {
+        color: 'neutral',
+        variant: 'ghost',
+        label: 'Price',
+        icon: isSorted
+          ? isSorted === 'asc'
+            ? 'i-lucide-arrow-up-narrow-wide'
+            : 'i-lucide-arrow-down-wide-narrow'
+          : 'i-lucide-arrow-up-down',
+        class: '-mx-2.5',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
+      })
+    }
+  },
+  {
+    accessorKey: 'location',
+    header: 'Location',
+    cell: ({ row }) => row.original.address
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    filterFn: 'equals',
+    cell: ({ row }) => {
+      const color = {
+        NEW: 'success' as const,
+        CALLBACK: 'error' as const,
+        bounced: 'warning' as const
+      }[row.original.status]
+
+      return h(UBadge, { class: 'capitalize', variant: 'subtle', color }, () =>
+        row.original.status
+      )
     }
   },
   {
@@ -194,22 +235,39 @@ const columns: TableColumn<Customer>[] = [
   }
 ]
 
+const statusFilter = ref('all')
+
+watch(() => statusFilter.value, (newVal) => {
+  if (!table?.value?.tableApi) return
+
+  const statusColumn = table.value.tableApi.getColumn('status')
+  if (!statusColumn) return
+
+  if (newVal === 'all') {
+    statusColumn.setFilterValue(undefined)
+  } else {
+    statusColumn.setFilterValue(newVal)
+  }
+})
+
+console.log()
+
 const pagination = ref({
   pageIndex: 0,
   pageSize: 10
 })
-
 </script>
 
 <template>
-  <UDashboardPanel id="customers">
+  <UDashboardPanel id="leads">
     <template #header>
-      <UDashboardNavbar title="Customers">
+      <UDashboardNavbar title="Leads">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
+
         <template #right>
-          <CustomersAddModal />
+          <LeadsAddModal />
         </template>
       </UDashboardNavbar>
     </template>
@@ -217,11 +275,11 @@ const pagination = ref({
     <template #body>
       <div class="flex flex-wrap items-center justify-between gap-1.5">
         <UInput
-          :model-value="(table?.tableApi?.getColumn('email')?.getFilterValue() as string)"
+          :model-value="(table?.tableApi?.getColumn('code')?.getFilterValue() as string)"
           class="max-w-sm"
           icon="i-lucide-search"
-          placeholder="Filter phone..."
-          @update:model-value="table?.tableApi?.getColumn('phone')?.setFilterValue($event)"
+          placeholder="Filter code..."
+          @update:model-value="table?.tableApi?.getColumn('code')?.setFilterValue($event)"
         />
 
         <div class="flex flex-wrap items-center gap-1.5">
@@ -240,6 +298,18 @@ const pagination = ref({
               </template>
             </UButton>
           </CustomersDeleteModal>
+
+          <USelect
+            v-model="statusFilter"
+            :items="[
+              { label: 'All', value: 'all' },
+              { label: 'New', value: 'NEW' },
+              { label: 'Callback', value: 'CALLBACK' }
+            ]"
+            :ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
+            placeholder="Filter status"
+            class="min-w-28"
+          />
           <UDropdownMenu
             :items="
               table?.tableApi
