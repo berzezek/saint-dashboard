@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, watchEffect } from 'vue'
+import { useTasksStore } from '../../stores/tasks'
 import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import type { Part } from "../../types"
 
 const open = defineModel<boolean>()
+const tasksStore = useTasksStore()
 
 const props = defineProps<{
   part?: Part
@@ -16,13 +18,7 @@ type Task = {
   value: number
 }
 
-const tasks = ref<Task[]>([
-  { id: 101, name: 'Диагностика', price: 50, value: 2 },
-  { id: 102, name: 'Установка ПО', price: 120, value: 2 },
-  { id: 103, name: 'Настройка сети', price: 90, value: 2 },
-  { id: 104, name: 'Замена модуля', price: 200, value: 2 },
-  { id: 105, name: 'Тестирование', price: 80, value: 2 },
-])
+const tasks = ref<Task[]>(tasksStore.parts)
 
 type TaskOption = {
   label: string  // название задачи
